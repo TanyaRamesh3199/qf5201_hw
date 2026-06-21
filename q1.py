@@ -137,7 +137,8 @@ def schedule_backward(start, end, step_months, eom_rule=True, cal=CAL):
 
 class MonotoneConvexCurve:
     """
-    To approximate the shape-preserving properties of Montone Convex method, PCHIP is used 
+    PCHIP interpolation on log ( DF ) . Produces C1 - smooth forward curves . 
+    To approximate the shape - preserving properties of Montone Convex method , PCHIP is used 
     """
     def __init__(self):
         self.t = []
