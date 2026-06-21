@@ -306,7 +306,7 @@ axes[1].grid(True, linestyle='--', alpha=0.5)
 axes[1].legend()
 plt.tight_layout()
 
-
+#Subplot 3: Discounting Curve
 axes[2].plot(grid, [estr.df_t(t) for t in grid], label='€STR Discounting Curve (OIS)', color='forestgreen', lw=2.5)
 axes[2].plot(grid, [euri.df_t(t) for t in grid], label='6M EURIBOR Pseudo-DF Curve', color='crimson', lw=2, linestyle='--')
 axes[2].set_title('Discount Factor Term Structure', fontsize=12, fontweight='bold')
