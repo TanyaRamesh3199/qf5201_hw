@@ -205,33 +205,33 @@ tau_on = act360(REF_DATE, on_end)
 df_on = 1.0 / (1.0 + estr_on_rate * tau_on)
 estr.add_pillar(yf(on_end), df_on)
 
-for tenor, rate in estr_swaps:
+for tenor, rate in euribor_swaps:
     maturity = CAL.modified_following(add_period(SPOT_DATE, tenor))
-    months = tenor_months(tenor) if tenor[-1] != 'W' else None
-    
-    if months is None or months < 12:
-        tau = act360(SPOT_DATE, maturity)
-        df_spot = estr.df_t(yf(SPOT_DATE))
-        df_mat = df_spot / (1.0 + rate * tau)
-        estr.add_pillar(yf(maturity), df_mat)
-        continue
+    fix_sched = schedule_backward(SPOT_DATE, maturity, 12, eom_rule=True)
+    flt_sched = schedule_backward(SPOT_DATE, maturity, 6, eom_rule=True)
 
-    accr = schedule_backward(SPOT_DATE, maturity, 12, eom_rule=True)
-    pay = [accr[0]] + [CAL.add_business_days(d, 1) for d in accr[1:]]
-    taus = [act360(accr[i], accr[i+1]) for i in range(len(accr)-1)]
-    df_spot = estr.df_t(yf(SPOT_DATE))
+    pv_fix = 0.0
+    for i in range(len(fix_sched) - 1):
+        tau_f = thirty_360(fix_sched[i], fix_sched[i+1])
+        # FIX: Discount fixed leg using risk-free ESTR, not credit-risky EURIBOR
+        pv_fix += rate * tau_f * estr.df_t(yf(fix_sched[i+1]))
 
-    known_sum = 0.0
-    for i in range(len(taus) - 1):
-        known_sum += taus[i] * estr.df_t(yf(pay[i+1]))
-    tau_last = taus[-1]
+    known_flt = 0.0
+    for i in range(len(flt_sched) - 2):
+        t1, t2 = flt_sched[i], flt_sched[i+1]
+        # FIX: Decouple projection (euri) from discounting (estr) to break circularity
+        known_flt += (euri.df_t(yf(t1)) / euri.df_t(yf(t2)) - 1.0) * estr.df_t(yf(t2))
+
+    t1_last, t2_last = flt_sched[-2], flt_sched[-1]
+    disc_last = estr.df_t(yf(t2_last)) # FIX: Discount final stub using ESTR
+    df_s_last = euri.df_t(yf(t1_last))
 
     def eq(df_last):
-        pv_fix = rate * (known_sum + tau_last * df_last)
-        return pv_fix - (df_spot - df_last)
+        pv_flt = known_flt + (df_s_last / df_last - 1.0) * disc_last
+        return pv_fix - pv_flt
 
     sol = brentq(eq, 1e-8, 2.0, xtol=1e-14)
-    estr.add_pillar(yf(pay[-1]), sol)
+    euri.add_pillar(yf(t2_last), sol)
 
 # ----- EURIBOR Bootstrapping -----
 euri = MonotoneConvexCurve()
