@@ -13,6 +13,8 @@ warnings.filterwarnings('ignore')
 # SECTION 1: CALENDAR UTILITIES
 # ============================================================================
 
+#Function to calculated easter
+
 def easter_sunday(year):
     a = year % 19
     b = year // 100
